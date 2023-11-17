@@ -2,9 +2,14 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+using SpeedLevel = VehicleDriveSystem.SpeedLevel;
+
 public class VehicleSpeedLights : MonoBehaviour
 {
-  [SerializeField] Renderer[] lights;
+  [SerializeField] Renderer lightReverse;
+  [SerializeField] Renderer lightNeutral;
+  [SerializeField] Renderer lightForwardOne;
+  [SerializeField] Renderer lightForwardTwo;
   [SerializeField] Material redOff;
   [SerializeField] Material redOn;
   [SerializeField] Material greenOff;
@@ -12,15 +17,11 @@ public class VehicleSpeedLights : MonoBehaviour
   [SerializeField] Material yellowOff;
   [SerializeField] Material yellowOn;
 
-  public void SetSpeed(int speed)
+  public void SetSpeed(SpeedLevel speedLevel)
   {
-    Debug.Log($"speed {speed}");
-    lights[0].material = speed == 0 ? redOn : greenOn;
-    for (int i = 1; i <= 2; i++)
-      lights[i].material = speed > 0 ? greenOn : greenOff;
-    for (int i = 3; i <= 4; i++)
-      lights[i].material = speed > 1 ? yellowOn : yellowOff;
-    for (int i = 5; i <= 6; i++)
-      lights[i].material = speed > 2 ? redOn : redOff;
+    lightReverse.material = speedLevel == SpeedLevel.Reverse ? yellowOn : yellowOff;
+    lightNeutral.material = speedLevel == SpeedLevel.None ? redOn : redOff;
+    lightForwardOne.material = speedLevel >= SpeedLevel.Low ? greenOn : greenOff;
+    lightForwardTwo.material = speedLevel == SpeedLevel.High ? greenOn : greenOff;
   }
 }

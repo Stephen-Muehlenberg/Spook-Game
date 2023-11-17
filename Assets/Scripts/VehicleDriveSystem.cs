@@ -1,9 +1,9 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
-public class Vehicle : MonoBehaviour
+public class VehicleDriveSystem : MonoBehaviour
 {
+  public enum SpeedLevel { Reverse = -1, None, Low, High }
+
   [SerializeField] private Rigidbody vehicle;
   [SerializeField] private Transform steeringWheel;
   [SerializeField] private VehicleSpeedLights speedLights;
@@ -11,23 +11,23 @@ public class Vehicle : MonoBehaviour
   [SerializeField] private float steerSpeed = 6f;
   [SerializeField] private Transform particleSpawnPoint;
 
-  private int speedLevel;
+  [SerializeField] private float[] powerUsePerSpeedLevel;
+
+  private SpeedLevel speedLevel;
   private float currentAcceleration;
-  private int MAX_SPEED_LEVEL;
   private float steerAmount;
   private float steerVelocity;
 
   private void Awake()
   {
-    MAX_SPEED_LEVEL = accelerationPerSpeedLevel.Length;
-    speedLights.SetSpeed(0);
+    speedLevel = SpeedLevel.None;
+    SetSpeedLevel(SpeedLevel.None);
   }
 
   private void Update()
   {
     UpdateSteeringInput();
     UpdateAccelerationInput();
-  //  LogStats();
 
     // Move particles ahead of vehicle so we don't leave the particle
     // spawn area.
@@ -67,44 +67,49 @@ public class Vehicle : MonoBehaviour
   {
     if (Input.GetKeyUp(KeyCode.W))
     {
-      if (speedLevel < MAX_SPEED_LEVEL)
-      {
-        speedLevel++;
-        currentAcceleration = accelerationPerSpeedLevel[speedLevel - 1];
-        speedLights.SetSpeed(speedLevel);
-      }
+      if (speedLevel < SpeedLevel.High)
+        SetSpeedLevel(speedLevel + 1);
     }
     else if (Input.GetKeyUp(KeyCode.S))
     {
-      if (speedLevel > 0)
-      {
-        speedLevel--;
-        if (speedLevel == 0)
-          currentAcceleration = 0;
-        else
-          currentAcceleration = accelerationPerSpeedLevel[speedLevel - 1];
-        speedLights.SetSpeed(speedLevel);
-      }
+      if (speedLevel > SpeedLevel.Reverse)
+        SetSpeedLevel(speedLevel - 1);
     }
+  }
+
+  private void SetSpeedLevel(SpeedLevel newLevel)
+  {
+    // Restore power used by previous speed level.
+    VehiclePower.RestorePower(powerUsePerSpeedLevel[(int)speedLevel + 1]);
+
+    speedLevel = newLevel;
+    currentAcceleration = accelerationPerSpeedLevel[(int)speedLevel + 1];
+    VehiclePower.DrainPower(powerUsePerSpeedLevel[(int)speedLevel + 1]);
+    speedLights.SetSpeed(speedLevel);
   }
 
   private void ApplySteeringAndAcceleration()
   {
-    if (speedLevel > 0)
+    if (speedLevel != SpeedLevel.None)
       vehicle.AddForce(Time.fixedDeltaTime
         * currentAcceleration
-        * transform.forward);
+        * transform.forward
+        * VehiclePower.powerFractionAvailable);
 
+    var forwardVelocity = Vector3.Dot(transform.forward, vehicle.velocity);
+    var rotationalVelocity = Vector3.Dot(transform.up, vehicle.angularVelocity);
+    
     if (steerAmount != 0 && vehicle.velocity.sqrMagnitude > 0)
-      vehicle.AddTorque(Time.fixedDeltaTime
-        * steerAmount
-        * Mathf.Clamp(vehicle.velocity.magnitude, 0, 1.7f)
-        * 200_000f
-        * Vector3.up);
-  }
-
-  private void LogStats()
-  {
-    Debug.Log($"{vehicle.velocity.magnitude}m/s");
+    {
+      var torqueToApply = Time.fixedDeltaTime
+          * steerAmount
+          * Mathf.Clamp(vehicle.velocity.magnitude, 0, 0.9f)
+          * 380_000f
+          * (forwardVelocity > 0 ? 1 : -1)
+          * Vector3.up;
+      if (rotationalVelocity > 1 && torqueToApply.y > 0) return;
+      if (rotationalVelocity < -1 && torqueToApply.y < 0) return;
+      vehicle.AddTorque(torqueToApply);
+    }
   }
 }
