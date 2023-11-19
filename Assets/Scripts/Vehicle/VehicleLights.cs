@@ -11,6 +11,7 @@ public class VehicleLights : MonoBehaviour
     public Light[] lights;
     public bool on;
     public float cost;
+    public float maxIntensity = 1;
   }
 
   [SerializeField] private LightSet cabinMain;
@@ -22,6 +23,18 @@ public class VehicleLights : MonoBehaviour
 
   public bool cabinMainOn => cabinMain.on;
   public bool cabinEmergencyOn => cabinEmergency.on;
+
+  private List<LightSet> allLights;
+
+  private void Awake()
+  {
+    allLights = new()
+    {
+      cabinMain, cabinEmergency,
+      frontMain, frontHigh,
+      sideMain, sideHigh
+    };
+  }
 
   private void Start()
   {
@@ -49,5 +62,30 @@ public class VehicleLights : MonoBehaviour
       VehiclePower.DrainPower(lightSet.cost);
     else
       VehiclePower.RestorePower(lightSet.cost);
+  }
+
+  private void Update()
+  {
+    if (Input.GetKeyUp(KeyCode.C))
+    {
+      if (cabinMain.on)
+        SetCabinMain(false);
+      else
+        SetCabinMain(true);
+    }
+    if (Input.GetKeyUp(KeyCode.F))
+    {
+      if (frontMain.on)
+        SetFrontMain(false);
+      else
+        SetFrontMain(true);
+    }
+
+    foreach (var set in allLights)
+    {
+      if (!set.on) continue;
+      foreach (var light in set.lights)
+        light.intensity = set.maxIntensity * VehiclePower.powerFractionAvailable;
+    }
   }
 }
