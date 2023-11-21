@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Events;
 
 public class VehicleLights : MonoBehaviour
 {
@@ -15,14 +16,14 @@ public class VehicleLights : MonoBehaviour
   }
 
   [SerializeField] private LightSet cabinMain;
-  [SerializeField] private LightSet cabinEmergency;
   [SerializeField] private LightSet frontMain;
   [SerializeField] private LightSet frontHigh;
   [SerializeField] private LightSet sideMain;
   [SerializeField] private LightSet sideHigh;
 
   public bool cabinMainOn => cabinMain.on;
-  public bool cabinEmergencyOn => cabinEmergency.on;
+
+  public UnityEvent<bool> lightsChanged = new();
 
   private List<LightSet> allLights;
 
@@ -30,7 +31,7 @@ public class VehicleLights : MonoBehaviour
   {
     allLights = new()
     {
-      cabinMain, cabinEmergency,
+      cabinMain,
       frontMain, frontHigh,
       sideMain, sideHigh
     };
@@ -43,8 +44,11 @@ public class VehicleLights : MonoBehaviour
     SetSideMain(true);
   }
 
-  public void SetCabinMain(bool on) => SetOn(cabinMain, on);
-  public void SetCabinEmergency(bool on) => SetOn(cabinEmergency, on);
+  public void SetCabinMain(bool on)
+  {
+    SetOn(cabinMain, on);
+    lightsChanged.Invoke(on);
+  }
   public void SetFrontMain(bool on) => SetOn(frontMain, on);
   public void SetFrontHigh(bool on) => SetOn(frontHigh, on);
   public void SetSideMain(bool on) => SetOn(sideMain, on);
