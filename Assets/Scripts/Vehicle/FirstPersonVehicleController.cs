@@ -103,4 +103,13 @@ public class FirstPersonVehicleController : MonoBehaviour
 
     InterpolatingCameraState.UpdateTransform(body, head);
   }
+
+  public void SetRotation(Quaternion rotation)
+  {
+    InterpolatingCameraState.yaw = rotation.eulerAngles.y;
+    InterpolatingCameraState.pitch = rotation.eulerAngles.x;
+    TargetCameraState.yaw = InterpolatingCameraState.yaw;
+    TargetCameraState.pitch = InterpolatingCameraState.pitch;
+    InterpolatingCameraState.UpdateTransform(body, head);
+  }
 }

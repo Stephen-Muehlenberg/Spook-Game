@@ -1,76 +1,68 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 public class VehicleInstructionBook : MonoBehaviour
 {
+  [SerializeField] private bool startGameLookingAtBook;
   [SerializeField] private FirstPersonVehicleController camController;
   [SerializeField] private VehicleDriveSystem driveSystem;
   [SerializeField] private VehicleLights lightSystem;
+  [SerializeField] private ClickController clickController;
   [SerializeField] private GameObject instructionBookModelCloseUp;
   [SerializeField] private GameObject[] pageText;
   [SerializeField] private GameObject[] blacklightText;
 
   private bool instructionsOpen;
   private int currentPage;
-  private RaycastHit clickRayInfo = new();
+  /// <summary>Prevent the book being accidentally closed on the same
+  /// frame it was opened.</summary>
+  private bool delayAfterOpening;
 
   private void Awake()
   {
-    CloseInstructions();
+    if (startGameLookingAtBook)
+    {
+      OpenInstructions();
+      camController.SetRotation(Quaternion.Euler(20, -90, 0));
+    }
+    else
+      CloseInstructions();
     OnCabinLightChanged(true);
   }
 
   private void Start()
   {
-    lightSystem.lightsChanged.AddListener(OnCabinLightChanged);
+    lightSystem.cabinLightsChanged.AddListener(OnCabinLightChanged);
   }
 
   private void Update()
   {
+    if (delayAfterOpening)
+    {
+      delayAfterOpening = false;
+      return;
+    }
+
+    if (!instructionsOpen)
+      return;
+
     if (Input.GetMouseButtonUp(0))
-    {
-      if (instructionsOpen)
-      {
-        CloseInstructions();
-      }
-      else
-      {
-
-        Physics.Raycast(
-          Camera.main.transform.position,
-          Camera.main.transform.forward,
-          out clickRayInfo,
-          5);
-        if (clickRayInfo.collider != null)
-        {
-          // TODO can probably replace this object check with a layer or tag or something,
-          // so that it doesn't matter what part of the object gets clicked.
-          // TODO centralise the click system, so we don't have a dozen different raycasts each frame.
-          if (clickRayInfo.collider.gameObject == transform.GetChild(0).gameObject)
-          {
-            OpenInstructions();
-          }
-        }
-      }
-    }
-
-    else if (instructionsOpen)
-    {
-      if (Input.GetKeyUp(KeyCode.A))
-        OpenPreviousPage();
-      else if (Input.GetKeyUp(KeyCode.D))
-        OpenNextPage();
-    }
+      CloseInstructions();
+    else if (Input.GetKeyUp(KeyCode.A))
+      OpenPreviousPage();
+    else if (Input.GetKeyUp(KeyCode.D))
+      OpenNextPage();
   }
 
-  private void OpenInstructions()
+  public void OpenInstructions()
   {
     instructionsOpen = true;
     camController.enabled = false;
     driveSystem.SetSpeedLevel(0);
     instructionBookModelCloseUp.SetActive(true);
     SetPage(currentPage);
+    clickController.SetEnabled(false);
+
+    delayAfterOpening = true;
   }
 
   private void CloseInstructions()
@@ -78,6 +70,7 @@ public class VehicleInstructionBook : MonoBehaviour
     instructionsOpen = false;
     camController.enabled = true;
     instructionBookModelCloseUp.SetActive(false);
+    clickController.SetEnabled(true);
   }
 
   private void SetPage(int page)
