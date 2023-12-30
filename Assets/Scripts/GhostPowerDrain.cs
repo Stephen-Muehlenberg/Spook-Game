@@ -9,7 +9,7 @@ public class GhostPowerDrain : MonoBehaviour
   private void Update()
   {
     if (previousPowerDrained > 0)
-      VehiclePower.ghostPowerInhibited -= previousPowerDrained;
+      VehiclePower.ghostPowerDrain -= previousPowerDrained;
 
     var offset = (transform.position - vehicle.position);
     if (offset.sqrMagnitude > 900)
@@ -17,7 +17,7 @@ public class GhostPowerDrain : MonoBehaviour
     else
     {
       previousPowerDrained = (30 - offset.magnitude) * 2.5f;
-      VehiclePower.ghostPowerInhibited += previousPowerDrained;
+      VehiclePower.ghostPowerDrain += previousPowerDrained;
     }
   }
 }

@@ -15,19 +15,31 @@ public class VehiclePowerDial : MonoBehaviour
 
   void Update()
   {
+    int redThreshold = Mathf.RoundToInt(VehiclePower.enginePowerDrain / 10f);
+    int yellowThreshold = Mathf.RoundToInt((VehiclePower.enginePowerDrain + VehiclePower.lightsPowerDrain) / 10f);
+
     smoothedPower = Mathf.SmoothDamp(
       current: smoothedPower,
-      target: VehiclePower.powerGenerated / 10f,
+      target: VehiclePower.usablePower / 10,
       currentVelocity: ref smoothedPowerVelocity,
       smoothTime: 1);
-    for (int i = 0; i < 3; i++)
-      powerLights[i].material =
-        smoothedPower > i ? redOn : redOff;
-    for (int i = 3; i < 6; i++)
-      powerLights[i].material =
-        smoothedPower > i ? yellowOn : yellowOff;
-    for (int i = 6; i < 10; i++)
-      powerLights[i].material =
-        smoothedPower > i ? greenOn : greenOff;
+    for (int i = 0; i < 10; i++)
+    {
+      if (i < redThreshold)
+      {
+        powerLights[i].material =
+          smoothedPower > i ? redOn : redOff;
+      }
+      else if (i < yellowThreshold)
+      {
+        powerLights[i].material =
+          smoothedPower > i ? yellowOn : yellowOff;
+      }
+      else
+      {
+        powerLights[i].material =
+          smoothedPower > i ? greenOn : greenOff;
+      }
+    }
   }
 }

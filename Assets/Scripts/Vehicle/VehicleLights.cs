@@ -11,9 +11,9 @@ public class VehicleLights : MonoBehaviour
     public string name;
     public Light[] lights;
     public VehicleLightSwitch lightSwitch;
-    /// <summary>Has the user set the light on?</summary>
+    /// <summary>Has the user set the physical light switch on?</summary>
     public bool switchedOn;
-    /// <summary>Should the Light component be on in the scene?
+    /// <summary>Should the light-emitting component be on in the scene?
     /// If both highbeams and front lights are on, only one
     /// will be enabled.</summary>
     public bool enableLight;
@@ -29,6 +29,7 @@ public class VehicleLights : MonoBehaviour
   private List<LightSet> allLights;
 
   public UnityEvent<bool> cabinLightsChanged = new();
+  public UnityEvent anyLightChanged = new();
 
   private void Awake()
   {
@@ -41,14 +42,13 @@ public class VehicleLights : MonoBehaviour
 
   private void Start()
   {
-    SetOn(cabinLightSet, true);
-    SetOn(frontLightSet, true);
-    SetOn(highbeamsLightSet, false);
-    SetOn(sideLightSet, false);
-    SetOn(emptyLightSet, true);
+    allLights.ForEach(lightSet => SetOn(
+      lightSet: lightSet,
+      on: lightSet.switchedOn,
+      isInitialSetting: true));
   }
 
-  private void SetOn(LightSet lightSet, bool on)
+  private void SetOn(LightSet lightSet, bool on, bool isInitialSetting = false)
   {
     lightSet.switchedOn = on;
     lightSet.lightSwitch.SetOn(on);
@@ -63,12 +63,12 @@ public class VehicleLights : MonoBehaviour
       highbeamsLightSet.enableLight = 
         frontLightSet.switchedOn
         && highbeamsLightSet.switchedOn;
-      Debug.Log($"front on {frontLightSet.switchedOn} enabled {frontLightSet.enableLight}, high on {highbeamsLightSet.switchedOn} enabled {highbeamsLightSet.enableLight}");
       foreach (var light in frontLightSet.lights)
         light.gameObject.SetActive(frontLightSet.enableLight);
       foreach (var light in highbeamsLightSet.lights)
         light.gameObject.SetActive(highbeamsLightSet.enableLight);
     }
+    // Other lights just turn on or off as normal.
     else
     {
       lightSet.enableLight = on;
@@ -76,12 +76,51 @@ public class VehicleLights : MonoBehaviour
         light.gameObject.SetActive(lightSet.enableLight);
     }
 
-    // This only works for normal light set logic. Need custom logic for the front/highbeams.
     if (lightSet.enableLight)
-      VehiclePower.DrainPower(lightSet.cost);
+    {
+      if (lightSet == highbeamsLightSet)
+      {
+        if (frontLightSet.switchedOn)
+        {
+          VehiclePower.lightsPowerDrain -= frontLightSet.cost;
+          VehiclePower.lightsPowerDrain += highbeamsLightSet.cost;
+        }
+      }
+      else if (lightSet == frontLightSet)
+      {
+        VehiclePower.lightsPowerDrain += highbeamsLightSet.switchedOn
+          ? highbeamsLightSet.cost
+          : frontLightSet.cost;
+      }
+      else
+        VehiclePower.lightsPowerDrain += lightSet.cost;
+    }
     else
-      VehiclePower.RestorePower(lightSet.cost);
-    
+    {
+      // If we're setting the lights' initial states,
+      // don't "restore" power to lights that were
+      // never on to begin with.
+      if (!isInitialSetting)
+      {
+        if (lightSet == highbeamsLightSet)
+        {
+          if (frontLightSet.switchedOn)
+          {
+            VehiclePower.lightsPowerDrain -= highbeamsLightSet.cost;
+            VehiclePower.lightsPowerDrain += frontLightSet.cost;
+          }
+        }
+        else if (lightSet == frontLightSet)
+        {
+          VehiclePower.lightsPowerDrain -= highbeamsLightSet.switchedOn
+            ? highbeamsLightSet.cost
+            : frontLightSet.cost;
+        }
+        else
+          VehiclePower.lightsPowerDrain -= lightSet.cost;
+      }
+    }
+
     if (lightSet == cabinLightSet)
       cabinLightsChanged?.Invoke(cabinLightSet.switchedOn);
   }
@@ -100,11 +139,11 @@ public class VehicleLights : MonoBehaviour
       SetOn(
         lightSet: emptyLightSet, 
         on: !emptyLightSet.lightSwitch.inOnPosition);
+    anyLightChanged?.Invoke();
   }
 
   private void Update()
   {
-//    Debug.Log($"high {highbeamsLightSet.enableLight}, front {frontLightSet.enableLight}, cabin {cabinLightSet.enableLight}");
     foreach (var set in allLights)
     {
       if (!set.enableLight) continue;

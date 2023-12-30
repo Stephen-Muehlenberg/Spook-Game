@@ -80,11 +80,11 @@ public class VehicleDriveSystem : MonoBehaviour
   public void SetSpeedLevel(SpeedLevel newLevel)
   {
     // Restore power used by previous speed level.
-    VehiclePower.RestorePower(powerUsePerSpeedLevel[(int)speedLevel + 1]);
+    VehiclePower.enginePowerDrain -= powerUsePerSpeedLevel[(int)speedLevel + 1];
 
     speedLevel = newLevel;
     currentAcceleration = accelerationPerSpeedLevel[(int)speedLevel + 1];
-    VehiclePower.DrainPower(powerUsePerSpeedLevel[(int)speedLevel + 1]);
+    VehiclePower.enginePowerDrain += powerUsePerSpeedLevel[(int)speedLevel + 1];
     speedLights.SetSpeed(speedLevel);
   }
 
